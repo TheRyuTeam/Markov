@@ -1,4 +1,5 @@
 #pragma once
+
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -6,41 +7,41 @@
 #include <stdbool.h>
 
 
-typedef
-struct _Replacement
-{
-	const char* from;
-	const int64_t fromLen;
-	const char* to;
-	const int64_t toLen;
-} Replacement;
+typedef const char *(Replacement[2]);
 
 
 uint64_t replaceFirst(char* bytes, int64_t nBytes, const Replacement replacement)
 {
-	if (bytes == 0 || nBytes < replacement.fromLen)
+	const char* from = replacement[0];
+	const char* to = replacement[1];
+
+	const int64_t fromLen = strlen(from);
+
+	if (bytes == 0 || replacement == 0 || nBytes < fromLen)
 		return -1;
 
-	if (replacement.fromLen == replacement.toLen)
+	const int64_t toLen = strlen(to);
+
+	if (fromLen == toLen)
 	{
-		for (int64_t bi = 0; bi + replacement.fromLen < nBytes + 1; ++bi)
+		for (int64_t bi = 0; bi + fromLen < nBytes + 1; ++bi)
 		{
-			if (memcmp(bytes + bi, replacement.from, replacement.fromLen) == 0)
+			if (memcmp(bytes + bi, from, fromLen) == 0)
 			{
-				memcpy(bytes + bi, replacement.to, replacement.toLen);
+				memcpy(bytes + bi, to, toLen);
 				return nBytes;
 			}
 		}
 	}
-	else if (replacement.fromLen > replacement.toLen)
+	else if (fromLen > toLen)
 	{
-		for (int64_t bi = 0; bi + replacement.fromLen < nBytes + 1; ++bi)
+		for (int64_t bi = 0; bi + fromLen < nBytes + 1; ++bi)
 		{
-			if (memcmp(bytes + bi, replacement.from, replacement.fromLen) == 0)
+			if (memcmp(bytes + bi, from, fromLen) == 0)
 			{
-				bytes = realloc(bytes, nBytes -= replacement.fromLen - replacement.toLen);
-				memcpy(bytes + bi + replacement.toLen, bytes + bi + replacement.fromLen,nBytes - bi - replacement.toLen);
-				memcpy(bytes + bi, replacement.to, replacement.toLen);
+				bytes = realloc(bytes, nBytes -= fromLen - toLen);
+				memcpy(bytes + bi + toLen, bytes + bi + fromLen,nBytes - bi - toLen);
+				memcpy(bytes + bi, to, toLen);
 				bytes[nBytes] = '\0';
 				return nBytes;
 			}
@@ -48,14 +49,14 @@ uint64_t replaceFirst(char* bytes, int64_t nBytes, const Replacement replacement
 	}
 	else
 	{
-		for (int64_t bi = 0; bi + replacement.fromLen < nBytes + 1; ++bi)
+		for (int64_t bi = 0; bi + fromLen < nBytes + 1; ++bi)
 		{
-			if (memcmp(bytes + bi, replacement.from, replacement.fromLen) == 0)
+			if (memcmp(bytes + bi, from, fromLen) == 0)
 			{
-				bytes = realloc(bytes, nBytes += replacement.toLen - replacement.fromLen);
-				for (int64_t k = nBytes - 1; k > bi + replacement.toLen - replacement.fromLen; --k)
-					bytes[k] = bytes[k - replacement.toLen + replacement.fromLen];
-				memcpy(bytes + bi, replacement.to, replacement.toLen);
+				bytes = realloc(bytes, nBytes += toLen - fromLen);
+				for (int64_t k = nBytes - 1; k > bi + toLen - fromLen; --k)
+					bytes[k] = bytes[k - toLen + fromLen];
+				memcpy(bytes + bi, to, toLen);
 				bytes[nBytes] = '\0';
 				return nBytes;
 			}
@@ -85,21 +86,25 @@ int64_t markov(char* bytes, int64_t nBytes,
 	return nBytes;
 }
 
-Replacement strReplacement(const char* from, const char* to)
-{
-	Replacement r = {.from = from, .fromLen = strlen(from), .to = to, .toLen = strlen(to)};
-	return r;
-}
-
 char* add2markov(const char* src)
 {
-	char* data = malloc(strlen(src) + 2);
+	if (src == 0)
+		return 0;
+
+	for (const char *ptr = src; *ptr; ++ptr)
+	{
+		if (*ptr != '|')
+			return 0;
+	}
+
+	const uint64_t len = strlen(src);
+	char* data = malloc(len + 2);
 	*data = '*';
 	strcpy(data + 1, src);
 
-	Replacement replacements[] = {
-		strReplacement("*|", "|*"),
-		strReplacement("*", "||")
+	Replacement replacements[2] = {
+		{"*|", "|*"},
+		{"*", "||"}
 	};
 
 	markov(data, strlen(data), replacements, 2);
