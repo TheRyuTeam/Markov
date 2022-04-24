@@ -7,10 +7,15 @@
 #include <stdbool.h>
 
 
-typedef const char *(Replacement[2]);
-
-
-uint64_t replaceFirst(char* bytes, int64_t nBytes, const Replacement replacement)
+/*!
+ * @brief Replace first occurrence of replacement[0] with replacement[1]
+ * @param bytes data for replacing occurrence
+ * @param nBytes amount of bytes
+ * @param replacement array of 2 null terminated strings for replacing
+ * @return if reallocation was happened new bytes length otherwise return old length,
+ * if bytes is null return -1
+ */
+uint64_t replaceFirst(char* bytes, int64_t nBytes, const char* replacement[2])
 {
 	const char* from = replacement[0];
 	const char* to = replacement[1];
@@ -65,9 +70,22 @@ uint64_t replaceFirst(char* bytes, int64_t nBytes, const Replacement replacement
 	return -1;
 }
 
+/*!
+ * @brief Applies Markov algorithm on given bytes
+ * @param bytes data for replacing occurrence
+ * @param nBytes amount of bytes
+ * @param replacements array of arrays of 2 null terminated strings for replacing
+ * @param nReplacements amount of replacements
+ * @return new bytes size if any reallocation happened otherwise return old bytes size,
+ * if bytes is null or replacements is null return -1
+ * @see replaceFirst
+ */
 int64_t markov(char* bytes, int64_t nBytes,
-			   const Replacement* replacements, const uint64_t nReplacements)
+			   const char* (*replacements)[2], const uint64_t nReplacements)
 {
+	if (bytes == 0 || replacements == 0)
+		return -1;
+
 	bool isChanged = true;
 	while (isChanged)
 	{
@@ -86,6 +104,13 @@ int64_t markov(char* bytes, int64_t nBytes,
 	return nBytes;
 }
 
+/*!
+ * @brief Add 2 to given unit number system number
+ * @param src given unit number system number
+ * @return if src is null return -1 otherwise given number increased by 2
+ * @note returned string must be free!
+ * @see markov
+ */
 char* add2markov(const char* src)
 {
 	if (src == 0)
@@ -102,7 +127,7 @@ char* add2markov(const char* src)
 	*data = '*';
 	strcpy(data + 1, src);
 
-	Replacement replacements[2] = {
+	const char* replacements[2][2] = {
 		{"*|", "|*"},
 		{"*", "||"}
 	};
